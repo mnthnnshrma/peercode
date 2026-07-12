@@ -65,8 +65,8 @@ io.on('connection', (socket) => {
     });
   });
 
-  socket.on(ACTIONS.CODE_CHANGE, ({ roomId, code }) => {
-    socket.in(roomId).emit(ACTIONS.CODE_CHANGE, { code });
+  socket.on(ACTIONS.CODE_CHANGE, ({ roomId, changes }) => {
+    socket.in(roomId).emit(ACTIONS.CODE_CHANGE, { changes, socketId: socket.id });
   });
 
   socket.on(ACTIONS.SYNC_CODE, ({ socketId, code }) => {

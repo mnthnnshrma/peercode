@@ -7,3 +7,13 @@ body {
     -moz-osx-font-smoothing: grayscale;
     background: #606c38;
 }
+
+/* Collaborative Author Colors */
+.cm-author-red { color: #ff5555 !important; background-color: rgba(255, 85, 85, 0.1); border-bottom: 1px solid #ff5555; }
+.cm-author-blue { color: #5555ff !important; background-color: rgba(85, 85, 255, 0.1); border-bottom: 1px solid #5555ff; }
+.cm-author-green { color: #55ff55 !important; background-color: rgba(85, 255, 85, 0.1); border-bottom: 1px solid #55ff55; }
+.cm-author-orange { color: #ffaa00 !important; background-color: rgba(255, 170, 0, 0.1); border-bottom: 1px solid #ffaa00; }
+.cm-author-purple { color: #aa55ff !important; background-color: rgba(170, 85, 255, 0.1); border-bottom: 1px solid #aa55ff; }
+.cm-author-cyan { color: #55ffff !important; background-color: rgba(85, 255, 255, 0.1); border-bottom: 1px solid #55ffff; }
+.cm-author-magenta { color: #ff55ff !important; background-color: rgba(255, 85, 255, 0.1); border-bottom: 1px solid #ff55ff; }
+.cm-author-yellow { color: #ffff55 !important; background-color: rgba(255, 255, 85, 0.1); border-bottom: 1px solid #ffff55; }

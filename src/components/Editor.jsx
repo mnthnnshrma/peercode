@@ -1,9 +1,43 @@
 import React, { useEffect, useRef } from 'react';
 import { EditorView, basicSetup } from 'codemirror';
-import { EditorState } from '@codemirror/state';
+import { EditorState, StateField, StateEffect, Annotation, ChangeSet } from '@codemirror/state';
 import { javascript } from '@codemirror/lang-javascript';
 import { oneDark } from '@codemirror/theme-one-dark';
+import { Decoration } from '@codemirror/view';
 import ACTIONS from '../Actions.js';
+
+const remoteChangeAnnotation = Annotation.define();
+const addAuthorMark = StateEffect.define();
+
+const authorMarkField = StateField.define({
+  create() {
+    return Decoration.none;
+  },
+  update(marks, tr) {
+    marks = marks.map(tr.changes);
+    for (let e of tr.effects) {
+      if (e.is(addAuthorMark)) {
+        marks = marks.update({
+          add: [e.value.deco.range(e.value.from, e.value.to)]
+        });
+      }
+    }
+    return marks;
+  },
+  provide: f => EditorView.decorations.from(f)
+});
+
+const userColors = {};
+const colors = ['red', 'blue', 'green', 'orange', 'purple', 'cyan', 'magenta', 'yellow'];
+let colorIndex = 0;
+
+function getUserColor(socketId) {
+  if (!userColors[socketId]) {
+    userColors[socketId] = colors[colorIndex % colors.length];
+    colorIndex++;
+  }
+  return userColors[socketId];
+}
 
 const Editor = ({ socketRef, roomId, onCodeChange }) => {
   const editorRef = useRef(null);
@@ -14,18 +48,17 @@ const Editor = ({ socketRef, roomId, onCodeChange }) => {
     if (!editorRef.current) return;
 
     const updateListener = EditorView.updateListener.of(update => {
-      if (update.changes) {
+      if (update.changes && update.docChanged) {
         const newCode = update.state.doc.toString();
+        codeRef.current = newCode;
+        onCodeChange(newCode);
 
-      
-        if (newCode !== codeRef.current) {
-          codeRef.current = newCode;
-          onCodeChange(newCode);
-
+        // Only broadcast if this change was made locally by the user
+        if (!update.transactions.some(tr => tr.annotation(remoteChangeAnnotation))) {
           if (socketRef.current) {
             socketRef.current.emit(ACTIONS.CODE_CHANGE, {
               roomId,
-              code: newCode,
+              changes: update.changes.toJSON(),
             });
           }
         }
@@ -34,7 +67,7 @@ const Editor = ({ socketRef, roomId, onCodeChange }) => {
 
     const state = EditorState.create({
       doc: '',
-      extensions: [basicSetup, javascript(), oneDark, updateListener],
+      extensions: [basicSetup, javascript(), oneDark, authorMarkField, updateListener],
     });
 
     viewRef.current = new EditorView({
@@ -51,20 +84,37 @@ const Editor = ({ socketRef, roomId, onCodeChange }) => {
 
   useEffect(() => {
     if (socketRef.current) {
-      const handleCodeChange = ({ code }) => {
-        if (code !== null && viewRef.current) {
-          const currentDoc = viewRef.current.state.doc.toString();
+      const handleCodeChange = ({ code, changes, socketId }) => {
+        if (!viewRef.current) return;
 
+        if (code !== undefined) {
+          // Full initial sync
+          const currentDoc = viewRef.current.state.doc.toString();
           if (currentDoc !== code) {
-            codeRef.current = code;
             viewRef.current.dispatch({
-              changes: {
-                from: 0,
-                to: currentDoc.length,
-                insert: code,
-              },
+              changes: { from: 0, to: currentDoc.length, insert: code },
+              annotations: [remoteChangeAnnotation.of(true)]
             });
           }
+        } else if (changes && socketId) {
+          // Incremental peer change
+          const changeSet = ChangeSet.fromJSON(changes);
+          const effects = [];
+          
+          const color = getUserColor(socketId);
+          const mark = Decoration.mark({ class: `cm-author-${color}` });
+          
+          changeSet.iterChanges((fromA, toA, fromB, toB, inserted) => {
+            if (fromB < toB) {
+              effects.push(addAuthorMark.of({ from: fromB, to: toB, deco: mark }));
+            }
+          });
+
+          viewRef.current.dispatch({
+            changes: changeSet,
+            effects: effects,
+            annotations: [remoteChangeAnnotation.of(true)]
+          });
         }
       };
 
