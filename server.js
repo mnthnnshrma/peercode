@@ -15,7 +15,7 @@ const server = http.createServer(app);
 
 const io = new Server(server, {
   cors: {
-    origin: process.env.CORS_ORIGIN || 'http://localhost:5173',
+    origin: process.env.VITE_BACKEND_URL || 'http://localhost:5173',
     methods: ['GET', 'POST'],
   },
 });
